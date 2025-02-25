@@ -11,10 +11,12 @@
   import { themeStore, settingsStore, processStore } from "$lib/stores/index";
   import { column_definitions } from "$lib/definitions/columns";
   import { filterProcesses, sortProcesses } from "$lib/utils";
+  import AppSidebar from "../lib/components/AppSidebar.svelte";
 
   $: ({
     processes,
     systemStats,
+    systemStatsHistory,
     error,
     searchTerm,
     isLoading,
@@ -97,9 +99,10 @@
 {:else}
   <div class="app-container">
     <TitleBar />
-    <main>
+    <!-- <AppSidebar /> -->
+    <main class="content">
       {#if systemStats}
-        <StatsBar {systemStats} />
+        <StatsBar {systemStats} {systemStatsHistory} />
       {/if}
 
       <ToolBar

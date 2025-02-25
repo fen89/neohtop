@@ -1,14 +1,16 @@
 <script lang="ts">
-  import type { SystemStats } from "$lib/types";
+  import type { SystemStats, SystemStatsHistory } from "$lib/types";
   import {
     CpuPanel,
     MemoryPanel,
     StoragePanel,
     SystemPanel,
     NetworkPanel,
+    HistoryPanel,
   } from "$lib/components";
 
   export let systemStats: SystemStats | null = null;
+  export let systemStatsHistory: SystemStatsHistory[] = [];
 </script>
 
 <div class="dashboard-stats">
@@ -35,6 +37,8 @@
         networkTxBytes={systemStats.network_tx_bytes}
       />
     </div>
+
+    <HistoryPanel {systemStatsHistory} />
   {/if}
 </div>
 

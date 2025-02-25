@@ -33,6 +33,11 @@ export interface SystemStats {
   disk_free_bytes: number;
 }
 
+export interface SystemStatsHistory extends SystemStats {
+  timestamp: Date;
+  cpu_usage_avg: number;
+}
+
 export interface Column {
   id: keyof Process;
   label: string;

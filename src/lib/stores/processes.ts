@@ -1,10 +1,12 @@
 import { writable, derived } from "svelte/store";
-import type { Process, SystemStats } from "$lib/types";
+import type { Process, SystemStats, SystemStatsHistory } from "$lib/types";
 import { invoke } from "@tauri-apps/api/core";
+import { settingsStore } from "./settings";
 
 interface ProcessStore {
   processes: Process[];
   systemStats: SystemStats | null;
+  systemStatsHistory: SystemStatsHistory[];
   error: string | null;
   isLoading: boolean;
   searchTerm: string;
@@ -26,6 +28,7 @@ interface ProcessStore {
 const initialState: ProcessStore = {
   processes: [],
   systemStats: null,
+  systemStatsHistory: [],
   error: null,
   isLoading: true,
   searchTerm: "",
@@ -45,8 +48,44 @@ const initialState: ProcessStore = {
 };
 
 function createProcessStore() {
+  const refreshRate = derived(
+    settingsStore,
+    ($settings) => $settings.behavior.refreshRate,
+  );
   const { subscribe, set, update } = writable<ProcessStore>(initialState);
 
+  refreshRate.subscribe((rate) => {
+    update((state) => {
+      const now = new Date().getTime();
+      const zeroValueEntries: SystemStatsHistory[] = [];
+      for (let i = 0; i < 60; i += rate / 1000) {
+        zeroValueEntries.push({
+          cpu_usage: [0],
+          timestamp: new Date(now - i * 1000),
+          cpu_usage_avg: 0,
+          memory_used: 0,
+          memory_cached: 0,
+          disk_free_bytes: 0,
+          disk_total_bytes: 0,
+          disk_used_bytes: 0,
+          load_avg: [0, 0, 0],
+          memory_free: 0,
+          memory_total: 0,
+          network_rx_bytes: 0,
+          network_tx_bytes: 0,
+          uptime: 0,
+        });
+      }
+      return {
+        ...state,
+        systemStatsHistory: zeroValueEntries,
+      };
+    });
+  });
+
+  subscribe((state) => {
+    console.log("history", state.systemStatsHistory);
+  });
   // Define all methods first
   const setIsLoading = (isLoading: boolean) =>
     update((state) => ({ ...state, isLoading }));
@@ -60,11 +99,29 @@ function createProcessStore() {
           updatedSelectedProcess =
             result[0].find((p) => p.pid === state.selectedProcessPid) || null;
         }
+        const systemStats = result[1];
+        const cpuUsage = systemStats.cpu_usage;
+        const averageCpuUsage =
+          cpuUsage.reduce((a, b) => a + b, 0) / cpuUsage.length;
+
+        const nextSystemStatsHistory = [
+          ...state.systemStatsHistory.filter(
+            (entry) =>
+              new Date().getTime() - new Date(entry.timestamp).getTime() <=
+              60000,
+          ),
+          {
+            ...systemStats,
+            timestamp: new Date(),
+            cpu_usage_avg: averageCpuUsage,
+          },
+        ];
 
         return {
           ...state,
           processes: result[0],
-          systemStats: result[1],
+          systemStats,
+          systemStatsHistory: nextSystemStatsHistory,
           error: null,
           selectedProcess: updatedSelectedProcess,
         };
